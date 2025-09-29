@@ -9,7 +9,7 @@ const HomePage = () => {
         <div className="hero-content">
           <h1>Personalized Ayurvedic Diets for a Balanced Life</h1>
           <p>Discover your unique mind-body type and get customized diet plans tailored to your specific needs</p>
-          <Link to="/register" className="btn btn-hero">Get My Diet Chart</Link>
+          <Link to="/register" className="btn btn-hero">Generate</Link>
         </div>
       </section>
 

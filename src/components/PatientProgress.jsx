@@ -1,63 +1,86 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { supabase } from '../supabaseClient.js';
+import { useAuth } from '../AuthContext.jsx';
 
 const PatientProgress = () => {
+  const { user } = useAuth();
+  const [reports, setReports] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Fetch patient reports for the logged-in doctor
+  const fetchReports = async () => {
+    if (!user) return;
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('patient_diet_pdfs')
+        .select('*')
+        .eq('doctor_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      setReports(data);
+    } catch (err) {
+      console.error(err);
+      setError('Failed to fetch reports.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchReports();
+  }, [user]);
+
+  if (loading) return <p>Loading patient progress...</p>;
+  if (error) return <p>{error}</p>;
+  if (reports.length === 0) return <p>No patient reports found.</p>;
+
   return (
-    <div>
-      <div className="dashboard-header">
-        <div className="dashboard-title">
-          <h1>Patient Progress & History</h1>
-          <p>Tracking your wellness journey</p>
-        </div>
-      </div>
-      
-      <div className="dosha-balance">
-        <div className="dosha-chart"></div>
-        <div className="dosha-label">Current Dosha Balance: Pitta - Kapha</div>
-      </div>
-      
-      <div className="progress-grid">
-        <div className="progress-card">
-          <h3>Weight Trend (Last 6 Months)</h3>
-          <div className="chart-container">
-            {/* Chart would be implemented with a library like Chart.js */}
-            <div style={{ height: '100%', backgroundColor: '#f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              Weight Chart Visualization
+    <div style={{ maxWidth: '800px', margin: '40px auto', padding: '20px' }}>
+      <h2>Patient Progress & Reports</h2>
+      <ul style={{ listStyleType: 'none', padding: 0 }}>
+        {reports.map((report, index) => (
+          <li
+            key={report.id}
+            style={{
+              marginBottom: '15px',
+              padding: '15px',
+              border: '1px solid #ccc',
+              borderRadius: '6px',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              backgroundColor: '#f9f9f9',
+            }}
+          >
+            <div>
+              <strong>{report.name}</strong> <br />
+              Dosha: {report.dosha} <br />
+              Created At: {new Date(report.created_at).toLocaleString()}
             </div>
-          </div>
-        </div>
-        
-        <div className="progress-card">
-          <h3>Energy Levels (Last 4 Weeks)</h3>
-          <div className="chart-container">
-            {/* Chart would be implemented with a library like Chart.js */}
-            <div style={{ height: '100%', backgroundColor: '#f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              Energy Chart Visualization
+            <div>
+              <a
+                href={report.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  textDecoration: 'none',
+                  color: 'white',
+                  backgroundColor: '#007bff',
+                  padding: '8px 12px',
+                  borderRadius: '4px',
+                  fontWeight: 'bold',
+                }}
+              >
+                View PDF
+              </a>
             </div>
-          </div>
-        </div>
-      </div>
-      
-      <div className="progress-card">
-        <h3>Symptoms Improvement</h3>
-        <ul className="symptom-list">
-          <li>Reduced Acidity</li>
-          <li>Better Digestion</li>
-          <li>Improved Sleep Quality</li>
-          <li>Reduced Joint Pain</li>
-          <li>Increased Energy Levels</li>
-        </ul>
-      </div>
-      
-      <div className="notes-section">
-        <h3>Practitioner Notes & Follow-up</h3>
-        <div className="notes-content">
-          <p>Patient shows significant improvement in digestion and energy levels. Continue with current diet plan and follow up in 2 weeks.</p>
-        </div>
-        <div className="action-buttons">
-          <button className="btn">Update My Health Data</button>
-          <button className="btn btn-secondary">Download Full History (PDF)</button>
-        </div>
-      </div>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 };

@@ -3,7 +3,7 @@ import PatientProgress from '../components/PatientProgress';
 
 const DashboardPage = () => {
   return (
-    <div className="container page-container">
+    <div>
       <PatientProgress />
     </div>
   );

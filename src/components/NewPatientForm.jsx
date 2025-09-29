@@ -1,269 +1,117 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../AuthContext.jsx'; // Corrected import path
+import { supabase } from '../supabaseClient.js'; // Corrected import path
+
+// Basic styling
+const styles = {
+    container: { maxWidth: '800px', margin: '40px auto', padding: '20px', backgroundColor: '#f9f9f9', borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.1)' },
+    form: { display: 'flex', flexDirection: 'column', gap: '20px' },
+    formGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px' },
+    formGroup: { display: 'flex', flexDirection: 'column' },
+    label: { marginBottom: '5px', fontWeight: 'bold', color: '#333' },
+    input: { padding: '10px', borderRadius: '4px', border: '1px solid #ccc', fontSize: '1rem' },
+    button: { padding: '12px 20px', fontSize: '1rem', color: 'white', backgroundColor: '#007bff', border: 'none', borderRadius: '4px', cursor: 'pointer', alignSelf: 'flex-start' },
+    status: { marginTop: '15px', fontWeight: 'bold' }
+};
 
 const NewPatientForm = () => {
+  const { user } = useAuth(); // Get the currently logged-in user
   const [formData, setFormData] = useState({
-    fullName: '',
-    email: '',
-    age: '',
-    gender: '',
-    phone: '',
-    prakriti: '',
-    agni: '',
-    healthGoals: []
+    name: '', age: '', height: '', weight: '', BP: '', sugar: '',
+    aim: '', exercise: '', waterIntake: '', dosha: ''
   });
-  
+  const [status, setStatus] = useState('');
   const navigate = useNavigate();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: value
-    });
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleCheckboxChange = (e) => {
-    const { value, checked } = e.target;
-    if (checked) {
-      setFormData({
-        ...formData,
-        healthGoals: [...formData.healthGoals, value]
+  const saveReportToSupabase = async (pdfUrl) => {
+      if (!user) throw new Error("User not authenticated.");
+
+      const { error } = await supabase.from('patient_diet_pdfs').insert({
+          name: formData.name,
+          doctor_id: user.id,
+          dosha: formData.dosha,
+          url: pdfUrl
       });
-    } else {
-      setFormData({
-        ...formData,
-        healthGoals: formData.healthGoals.filter(goal => goal !== value)
+
+      if (error) {
+          throw new Error(`Failed to save report to database: ${error.message}`);
+      }
+  };
+ 
+  const handleSubmit = async (e) => {
+    e.preventDefault(); 
+    setStatus('Step 1/3: Generating PDF on server...');
+    try {
+      // Step 1: Call backend to generate PDF and get Cloudinary URL
+      const response = await fetch("http://localhost:3000/generate-diet-pdf", { 
+          method: "POST",
+          headers: {
+    "Content-Type": "application/json", // important to tell server you're sending JSON
+    "Authorization": `Bearer ${user?.access_token}` // optional, if you want to send Supabase auth token
+  },
+          body: JSON.stringify(formData)
       });
+
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+          throw new Error(result.error || 'PDF generation failed on the server.');
+      }
+      
+      const pdfUrl = result.pdfUrl;
+
+      // Step 2: Save the received URL to Supabase
+      setStatus('Step 2/3: Saving report to your database...');
+      await saveReportToSupabase(pdfUrl);
+
+      // Step 3: Trigger the download for the user using the Cloudinary URL
+      setStatus('Step 3/3: Finalizing download...');
+      const a = document.createElement("a");
+      a.href = pdfUrl;
+      // The 'download' attribute is a hint to the browser to download the linked URL
+      a.download = `${formData.name || 'patient'}_diet_report.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+
+      setStatus('Process complete! PDF downloaded and saved. 🎉');
+      
+    } catch (err) {
+      console.error("Error during the process:", err);
+      setStatus("Error: " + err.message);
     }
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    // Handle form submission logic here
-    console.log('Form submitted:', formData);
-    // Redirect to dashboard after submission
-    navigate('/dashboard');
-  };
-
   return (
-    <div>
+    <div style={styles.container}>
       <h1>New Patient Form</h1>
-      <p>Please fill out the following information to create your personalized health plan.</p>
+      <p>Please fill out the following information to create and save a personalized health plan.</p>
       
-      <form onSubmit={handleSubmit}>
-        <div className="form-section">
-          <h3>Basic Information</h3>
-          <div className="form-grid">
-            <div className="form-group">
-              <label htmlFor="fullName">Full Name</label>
+      <form onSubmit={handleSubmit} style={styles.form}>
+        <div style={styles.formGrid}>
+          {Object.keys(formData).map(key => (
+            <div key={key} style={styles.formGroup}>
+              <label htmlFor={key} style={styles.label}>{key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}</label>
               <input
-                type="text"
-                id="fullName"
-                name="fullName"
-                value={formData.fullName}
+                type={['age', 'height', 'weight', 'BP', 'sugar', 'exercise', 'waterIntake'].includes(key) ? 'number' : 'text'}
+                id={key}
+                name={key}
+                value={formData[key]}
                 onChange={handleChange}
                 required
+                style={styles.input}
               />
             </div>
-            
-            <div className="form-group">
-              <label htmlFor="email">Email</label>
-              <input
-                type="email"
-                id="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                required
-              />
-            </div>
-            
-            <div className="form-group">
-              <label htmlFor="age">Age</label>
-              <input
-                type="number"
-                id="age"
-                name="age"
-                value={formData.age}
-                onChange={handleChange}
-                required
-              />
-            </div>
-            
-            <div className="form-group">
-              <label htmlFor="phone">Phone Number</label>
-              <input
-                type="tel"
-                id="phone"
-                name="phone"
-                value={formData.phone}
-                onChange={handleChange}
-                required
-              />
-            </div>
-          </div>
-          
-          <div className="form-group">
-            <label>Gender</label>
-            <div className="form-row">
-              <div className="checkbox-item">
-                <input
-                  type="radio"
-                  id="male"
-                  name="gender"
-                  value="Male"
-                  checked={formData.gender === 'Male'}
-                  onChange={handleChange}
-                />
-                <label htmlFor="male">Male</label>
-              </div>
-              
-              <div className="checkbox-item">
-                <input
-                  type="radio"
-                  id="female"
-                  name="gender"
-                  value="Female"
-                  checked={formData.gender === 'Female'}
-                  onChange={handleChange}
-                />
-                <label htmlFor="female">Female</label>
-              </div>
-              
-              <div className="checkbox-item">
-                <input
-                  type="radio"
-                  id="other"
-                  name="gender"
-                  value="Other"
-                  checked={formData.gender === 'Other'}
-                  onChange={handleChange}
-                />
-                <label htmlFor="other">Other</label>
-              </div>
-            </div>
-          </div>
+          ))}
         </div>
         
-        <div className="form-section">
-          <h3>Ayurvedic Profile & Goals</h3>
-          
-          <div className="form-group">
-            <label htmlFor="prakriti">Prakriti (Constitution Type)</label>
-            <select
-              id="prakriti"
-              name="prakriti"
-              value={formData.prakriti}
-              onChange={handleChange}
-              required
-            >
-              <option value="">Select your Prakriti</option>
-              <option value="Vata">Vata</option>
-              <option value="Pitta">Pitta</option>
-              <option value="Kapha">Kapha</option>
-              <option value="Vata-Pitta">Vata-Pitta</option>
-              <option value="Vata-Kapha">Vata-Kapha</option>
-              <option value="Pitta-Kapha">Pitta-Kapha</option>
-              <option value="Tridosha">Tridosha</option>
-            </select>
-          </div>
-          
-          <div className="form-group">
-            <label htmlFor="agni">Agni (Digestive Strength)</label>
-            <select
-              id="agni"
-              name="agni"
-              value={formData.agni}
-              onChange={handleChange}
-              required
-            >
-              <option value="">Select your Agni level</option>
-              <option value="Low">Low</option>
-              <option value="Moderate">Moderate</option>
-              <option value="Strong">Strong</option>
-            </select>
-          </div>
-          
-          <div className="form-group">
-            <label>Health Goals (Select all that apply)</label>
-            <div className="checkbox-group">
-              <div className="checkbox-item">
-                <input
-                  type="checkbox"
-                  id="weight-loss"
-                  name="healthGoals"
-                  value="Weight Loss Management"
-                  checked={formData.healthGoals.includes('Weight Loss Management')}
-                  onChange={handleCheckboxChange}
-                />
-                <label htmlFor="weight-loss">Weight Loss Management</label>
-              </div>
-              
-              <div className="checkbox-item">
-                <input
-                  type="checkbox"
-                  id="digestion"
-                  name="healthGoals"
-                  value="Improve Digestion"
-                  checked={formData.healthGoals.includes('Improve Digestion')}
-                  onChange={handleCheckboxChange}
-                />
-                <label htmlFor="digestion">Improve Digestion</label>
-              </div>
-              
-              <div className="checkbox-item">
-                <input
-                  type="checkbox"
-                  id="energy"
-                  name="healthGoals"
-                  value="Increase Energy Levels"
-                  checked={formData.healthGoals.includes('Increase Energy Levels')}
-                  onChange={handleCheckboxChange}
-                />
-                <label htmlFor="energy">Increase Energy Levels</label>
-              </div>
-              
-              <div className="checkbox-item">
-                <input
-                  type="checkbox"
-                  id="stress"
-                  name="healthGoals"
-                  value="Stress Management"
-                  checked={formData.healthGoals.includes('Stress Management')}
-                  onChange={handleCheckboxChange}
-                />
-                <label htmlFor="stress">Stress Management</label>
-              </div>
-              
-              <div className="checkbox-item">
-                <input
-                  type="checkbox"
-                  id="sleep"
-                  name="healthGoals"
-                  value="Better Sleep Quality"
-                  checked={formData.healthGoals.includes('Better Sleep Quality')}
-                  onChange={handleCheckboxChange}
-                />
-                <label htmlFor="sleep">Better Sleep Quality</label>
-              </div>
-              
-              <div className="checkbox-item">
-                <input
-                  type="checkbox"
-                  id="immunity"
-                  name="healthGoals"
-                  value="Boost Immunity"
-                  checked={formData.healthGoals.includes('Boost Immunity')}
-                  onChange={handleCheckboxChange}
-                />
-                <label htmlFor="immunity">Boost Immunity</label>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <button type="submit" className="btn">Save & Generate Diet Plan</button>
+        <button type="submit" style={styles.button}>Save & Generate Diet Plan</button>
+        {status && <p style={styles.status}>{status}</p>}
       </form>
     </div>
   );
