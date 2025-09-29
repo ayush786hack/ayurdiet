@@ -49,7 +49,7 @@ const NewPatientForm = () => {
     setStatus('Step 1/3: Generating PDF on server...');
     try {
       // Step 1: Call backend to generate PDF and get Cloudinary URL
-      const response = await fetch("http://localhost:3000/generate-diet-pdf", { 
+      const response = await fetch("https://ayurdietbeee.onrender.com/generate-diet-pdf", { 
           method: "POST",
           headers: {
     "Content-Type": "application/json", // important to tell server you're sending JSON
