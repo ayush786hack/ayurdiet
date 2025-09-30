@@ -11,6 +11,7 @@ const HomePage = () => {
           <p>Discover your unique mind-body type and get customized diet plans tailored to your specific needs</p>
           <Link to="/register" className="btn btn-hero">Generate</Link>
         </div>
+        
       </section>
 
       {/* How It Works Section */}
@@ -40,14 +41,15 @@ const HomePage = () => {
       {/* Why Ayurveda Section */}
       <section className="section light-section">
         <div className="container">
-          <h2 className="section-title">Why Ayurveda</h2>
+          <h2 className="section-title">Why Ayurveda?</h2>
           <div className="ayurveda-content">
             <div className="ayurveda-text">
               <p>Ayurveda, the ancient Indian system of medicine, emphasizes balance between body, mind, and spirit. By understanding your unique constitution, we can create diet plans that help you achieve optimal health and harmony.</p>
               <p>Our AI-powered system combines traditional Ayurvedic wisdom with modern nutritional science to provide you with personalized recommendations that work.</p>
             </div>
-            <div className="ayurveda-image">
-              <div className="image-placeholder">Ayurveda Balance Image</div>
+            <div className="hero-illustration">
+              <div className="image-placeholder">
+           <img src="gemini.jpeg "   className="ayurveda-image-hero"  alt="image" ></img></div>
             </div>
           </div>
         </div>

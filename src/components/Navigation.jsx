@@ -11,6 +11,7 @@ const Navigation = () => {
   return (
     <nav className="navbar">
       <div className="nav-container">
+        <img src="gemini.jpeg" className="logo-icon"alt="logo" width="95" height="80"/>
         <Link to="/" className="logo">AyurDiet</Link>
         <ul className="nav-links">
            {!user && (
